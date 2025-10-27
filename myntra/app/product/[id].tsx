@@ -88,7 +88,7 @@ export default function ProductDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
-  const autoScrollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoScrollTimer = useRef<number | null>(null);
   const { user } = useAuth();
   const [product, setproduct] = useState<any>(null);
   const [iswishlist, setiswishlist] = useState(false);
@@ -151,6 +151,7 @@ export default function ProductDetails() {
 
     try {
       await axios.post(`https://myntra-clone-fdcv.onrender.com/wishlist`, {
+        userId: user._id,
         productId: id,
       });
       setiswishlist(true);
@@ -173,6 +174,7 @@ export default function ProductDetails() {
     try {
       setLoading(true);
       await axios.post(`https://myntra-clone-fdcv.onrender.com/bag`, {
+        userId: user._id,
         productId: id,
         size: selectedSize,
         quantity: 1,

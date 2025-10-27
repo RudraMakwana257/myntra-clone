@@ -7,46 +7,48 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { ShoppingBag, Minus, Plus, Trash2 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
 
-// const bagItems = [
-//   {
-//     id: 1,
-//     name: "White Cotton T-Shirt",
-//     brand: "H&M",
-//     size: "L",
-//     price: 799,
-//     quantity: 1,
-//     image:
-//       "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&auto=format&fit=crop",
-//   },
-//   {
-//     id: 2,
-//     name: "Blue Denim Jacket",
-//     brand: "Levis",
-//     size: "M",
-//     price: 2999,
-//     quantity: 1,
-//     image:
-//       "https://images.unsplash.com/photo-1523205771623-e0faa4d2813d?w=500&auto=format&fit=crop",
-//   },
-// ];
+const bagItems = [
+  {
+    id: 1,
+    name: "White Cotton T-Shirt",
+    brand: "H&M",
+    size: "L",
+    price: 799,
+    quantity: 1,
+    image:
+      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&auto=format&fit=crop",
+  },
+  {
+    id: 2,
+    name: "Blue Denim Jacket",
+    brand: "Levis",
+    size: "M",
+    price: 2999,
+    quantity: 1,
+    image:
+      "https://images.unsplash.com/photo-1523205771623-e0faa4d2813d?w=500&auto=format&fit=crop",
+  },
+];
 
 export default function Bag() {
   const router = useRouter();
+
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   const [bag, setbag] = useState<any>(null);
-  useEffect(() => {
-    // Simulate loading time
 
-    
-    fetchproduct();
-  }, [user]);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchproduct();
+    }, [user])
+  );
+
   const fetchproduct = async () => {
     if (user) {
       try {
@@ -82,6 +84,28 @@ export default function Bag() {
       </View>
     );
   }
+  if (!isLoading && (!bag || bag.length === 0)) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Shopping Bag</Text>
+        </View>
+        <View style={styles.emptyState}>
+          <ShoppingBag size={64} color="#ff3f6c" />
+          <Text style={styles.emptyTitle}>Your bag is empty</Text>
+          <Text style={styles.emptySubtitle}>
+            Add some products to your bag
+          </Text>
+          <TouchableOpacity
+            style={styles.loginButton}
+            onPress={() => router.push("/")}
+          >
+            <Text style={styles.loginButtonText}>CONTINUE SHOPPING</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
   if (isLoading) {
     return (
       <View style={styles.loaderContainer}>
@@ -93,15 +117,16 @@ export default function Bag() {
     (sum: any, item: any) => sum + item.productId.price * item.quantity,
     0
   );
-  const handledelete=async(itemid:any)=>{
+  const handledelete = async (itemid: any) => {
     try {
-      await axios.delete(`https://myntra-clone-fdcv.onrender.com/bag/${itemid}`)
+      await axios.delete(
+        `https://myntra-clone-fdcv.onrender.com/bag/${itemid}`
+      );
       fetchproduct();
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
-   
-  }
+  };
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -129,7 +154,10 @@ export default function Bag() {
                 <TouchableOpacity style={styles.quantityButton}>
                   <Plus size={20} color="#3e3e3e" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.removeButton} onPress={()=>handledelete(item._id)}>
+                <TouchableOpacity
+                  style={styles.removeButton}
+                  onPress={() => handledelete(item._id)}
+                >
                   <Trash2 size={20} color="#ff3f6c" />
                 </TouchableOpacity>
               </View>
@@ -192,6 +220,12 @@ const styles = StyleSheet.create({
     color: "#3e3e3e",
     marginTop: 20,
     marginBottom: 20,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 20,
+    textAlign: "center",
   },
   loginButton: {
     backgroundColor: "#ff3f6c",

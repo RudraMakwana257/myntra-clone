@@ -1,6 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Heart, Trash2 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -38,15 +38,17 @@ export default function Wishlist() {
   const { user } = useAuth();
   const [wishlist, setwishlist] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  useEffect(() => {
-    fetchproduct();
-  }, [user]);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchproduct();
+    }, [user])
+  );
   const fetchproduct = async () => {
     if (user) {
       try {
         setIsLoading(true);
         const bag = await axios.get(
-          `https://myntra-clone-fdcv.onrender.com/${user._id}`
+          `https://myntra-clone-fdcv.onrender.com/wishlist/${user._id}`
         );
         setwishlist(bag.data);
       } catch (error) {
@@ -57,15 +59,17 @@ export default function Wishlist() {
       }
     }
   };
-  const handledelete=async(itemid:any)=>{
+
+  const handledelete = async (itemid: any) => {
     try {
-      await axios.delete(`https://myntra-clone-fdcv.onrender.com/wishlist/${itemid}`)
+      await axios.delete(
+        `https://myntra-clone-fdcv.onrender.com/wishlist/${itemid}`
+      );
       fetchproduct();
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
-   
-  }
+  };
   if (!user) {
     return (
       <View style={styles.container}>
@@ -87,6 +91,23 @@ export default function Wishlist() {
       </View>
     );
   }
+  if (!isLoading && (!wishlist || wishlist.length === 0)) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Wishlist</Text>
+        </View>
+        <View style={styles.emptyState}>
+          <Heart size={64} color="#ff3f6c" />
+          <Text style={styles.emptyTitle}>Your wishlist is empty</Text>
+          <Text style={styles.emptySubtitle}>
+            Add items you love to your wishlist
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   if (isLoading) {
     return (
       <View style={styles.loaderContainer}>
@@ -101,9 +122,12 @@ export default function Wishlist() {
       </View>
 
       <ScrollView style={styles.content}>
-        {wishlist?.map((item:any) => (
+        {wishlist?.map((item: any) => (
           <View key={item._id} style={styles.wishlistItem}>
-            <Image  source={{ uri: item.productId.images[0] }} style={styles.itemImage} />
+            <Image
+              source={{ uri: item.productId.images[0] }}
+              style={styles.itemImage}
+            />
             <View style={styles.itemInfo}>
               <Text style={styles.brandName}>{item.productId.brand}</Text>
               <Text style={styles.itemName}>{item.productId.name}</Text>
@@ -112,7 +136,10 @@ export default function Wishlist() {
                 <Text style={styles.discount}>{item.productId.discount}</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.removeButton} onPress={()=>handledelete(item._id)}>
+            <TouchableOpacity
+              style={styles.removeButton}
+              onPress={() => handledelete(item._id)}
+            >
               <Trash2 size={24} color="#ff3f6c" />
             </TouchableOpacity>
           </View>
@@ -160,6 +187,12 @@ const styles = StyleSheet.create({
     color: "#3e3e3e",
     marginTop: 20,
     marginBottom: 20,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 20,
+    textAlign: "center",
   },
   loginButton: {
     backgroundColor: "#ff3f6c",

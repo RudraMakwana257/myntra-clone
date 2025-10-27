@@ -46,7 +46,7 @@ export default function Wishlist() {
       try {
         setIsLoading(true);
         const bag = await axios.get(
-          `http://192.168.182.218:5000/${user._id}`
+          `https://myntra-clone-fdcv.onrender.com/${user._id}`
         );
         setwishlist(bag.data);
       } catch (error) {
@@ -59,7 +59,7 @@ export default function Wishlist() {
   };
   const handledelete=async(itemid:any)=>{
     try {
-      await axios.delete(`http://192.168.182.218:5000/wishlist/${itemid}`)
+      await axios.delete(`https://myntra-clone-fdcv.onrender.com/wishlist/${itemid}`)
       fetchproduct();
     } catch (error) {
       console.log(error)

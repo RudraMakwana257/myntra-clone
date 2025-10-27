@@ -21,7 +21,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/myntra-fav.webp"
+      "favicon": "./assets/images/myntra-fav.jpg"
     },
     "plugins": [
       "expo-router",
@@ -41,6 +41,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ebeb96a2-b9fb-4d49-b0c2-8c4a4dd38cf0"
+      }
     }
   }
 }

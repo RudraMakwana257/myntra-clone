@@ -143,7 +143,7 @@ export default function Orders() {
         try {
           setIsLoading(true);
           const product = await axios.get(
-            `http://192.168.182.218:5000/order/user/${user._id}`
+            `https://myntra-clone-fdcv.onrender.com/order/user/${user._id}`
           );
           setorder(product.data);
         } catch (error) {

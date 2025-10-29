@@ -125,7 +125,7 @@ export default function Wishlist() {
         {wishlist?.map((item: any) => (
           <View key={item._id} style={styles.wishlistItem}>
             <Image
-              source={{ uri: item.productId.images[0] }}
+              source={{ uri: item.productId.images?.[0] || 'https://via.placeholder.com/150' }}
               style={styles.itemImage}
             />
             <View style={styles.itemInfo}>

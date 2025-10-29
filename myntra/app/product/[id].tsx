@@ -14,6 +14,7 @@ import { Heart, ShoppingBag } from "lucide-react-native";
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
+import { addRecentlyViewed } from "@/utils/storage";
 
 // Mock product data - in a real app, this would come from an API
 // const products = {
@@ -111,6 +112,20 @@ export default function ProductDetails() {
     };
     fetchproduct();
   }, []);
+
+  // Record recently viewed when product loads
+  useEffect(() => {
+    if (product && id) {
+      addRecentlyViewed({
+        id: String(id),
+        name: product.name,
+        brand: product.brand,
+        price: product.price,
+        discount: product.discount,
+        image: Array.isArray(product.images) ? product.images[0] : undefined,
+      }).catch(() => {});
+    }
+  }, [product, id]);
 
   useEffect(() => {
     // Start auto-scroll

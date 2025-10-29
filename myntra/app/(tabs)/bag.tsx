@@ -127,6 +127,17 @@ export default function Bag() {
       console.log(error);
     }
   };
+  const handleUpdateQty = async (itemid: any, newQty: number) => {
+    try {
+      await axios.patch(
+        `https://myntra-clone-fdcv.onrender.com/bag/${itemid}`,
+        { quantity: newQty }
+      );
+      fetchproduct();
+    } catch (error) {
+      console.log(error);
+    }
+  };
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -137,7 +148,7 @@ export default function Bag() {
         {bag?.map((item: any) => (
           <View key={item._id} style={styles.bagItem}>
             <Image
-              source={{ uri: item.productId.images[0] }}
+              source={{ uri: item.productId.images?.[0] || 'https://via.placeholder.com/150' }}
               style={styles.itemImage}
             />
             <View style={styles.itemInfo}>
@@ -147,11 +158,17 @@ export default function Bag() {
               <Text style={styles.itemPrice}>₹{item.productId.price}</Text>
 
               <View style={styles.quantityContainer}>
-                <TouchableOpacity style={styles.quantityButton}>
+                <TouchableOpacity
+                  style={styles.quantityButton}
+                  onPress={() => handleUpdateQty(item._id, item.quantity - 1)}
+                >
                   <Minus size={20} color="#3e3e3e" />
                 </TouchableOpacity>
                 <Text style={styles.quantity}>{item.quantity}</Text>
-                <TouchableOpacity style={styles.quantityButton}>
+                <TouchableOpacity
+                  style={styles.quantityButton}
+                  onPress={() => handleUpdateQty(item._id, item.quantity + 1)}
+                >
                   <Plus size={20} color="#3e3e3e" />
                 </TouchableOpacity>
                 <TouchableOpacity

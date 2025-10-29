@@ -12,6 +12,8 @@ import { Search, ChevronRight } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
+import { getRecentlyViewed, RecentlyViewedItem } from "@/utils/storage";
+import { useFocusEffect } from "@react-navigation/native";
 
 // const categories = [
 //   {
@@ -99,8 +101,9 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [product, setproduct] = useState<any>(null);
   const [categories, setcategories] = useState<any>(null);
+  const [recentlyViewed, setRecentlyViewed] = useState<RecentlyViewedItem[]>([]);
   const { user } = useAuth();
-  const handleProductPress = (productId: number) => {
+  const handleProductPress = (productId: string) => {
     if (!user) {
       router.push("/login");
     } else {
@@ -124,6 +127,24 @@ export default function Home() {
     };
     fetchproduct();
   }, []);
+
+  // Load recently viewed whenever Home gains focus
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+      (async () => {
+        try {
+          const list = await getRecentlyViewed();
+          if (isActive) setRecentlyViewed(list);
+        } catch (e) {
+          // ignore
+        }
+      })();
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -174,6 +195,45 @@ export default function Home() {
           )}
         </ScrollView>
       </View>
+
+      {recentlyViewed.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>RECENTLY VIEWED</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.recentScroll}
+          >
+            {recentlyViewed.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.recentCard}
+                onPress={() => handleProductPress(item.id)}
+              >
+                {item.image ? (
+                  <Image source={{ uri: item.image }} style={styles.recentImage} />
+                ) : (
+                  <View style={[styles.recentImage, { backgroundColor: "#f0f0f0" }]} />
+                )}
+                <View style={styles.recentInfo}>
+                  <Text style={styles.brandName} numberOfLines={1}>{item.brand}</Text>
+                  <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
+                  <View style={styles.priceRow}>
+                    {typeof item.price === "number" ? (
+                      <Text style={styles.productPrice}>₹{item.price}</Text>
+                    ) : null}
+                    {item.discount ? (
+                      <Text style={styles.discount}>{item.discount}</Text>
+                    ) : null}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -396,5 +456,28 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginTop: 50,
+  },
+  // Recently viewed styles
+  recentScroll: {
+    marginHorizontal: -15,
+  },
+  recentCard: {
+    width: 140,
+    marginHorizontal: 8,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 3,
+  },
+  recentImage: {
+    width: "100%",
+    height: 160,
+  },
+  recentInfo: {
+    padding: 8,
   },
 });

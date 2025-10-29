@@ -200,7 +200,7 @@ export default function Orders() {
               {order.items.map((item:any) => (
                 <View key={item._id} style={styles.orderItem}>
                   <Image
-                    source={{ uri: item.productId.images }}
+                    source={{ uri: item.productId.images?.[0] || 'https://via.placeholder.com/150' }}
                     style={styles.itemImage}
                   />
                   <View style={styles.itemInfo}>

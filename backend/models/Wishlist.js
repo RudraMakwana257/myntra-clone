@@ -8,4 +8,7 @@ const WishlistSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Create unique compound index to prevent duplicate products in wishlist
+WishlistSchema.index({ userId: 1, productId: 1 }, { unique: true });
+
 module.exports = mongoose.model("Wishlist", WishlistSchema);

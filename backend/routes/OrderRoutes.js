@@ -1,6 +1,9 @@
 const express = require("express");
 const Bag = require("../models/Bag");
 const Order = require("../models/Order");
+const Transaction = require("../models/Transaction");
+const DeviceToken = require("../models/DeviceToken");
+const notificationService = require("../services/notificationService");
 const router = express.Router();
 const mongoose = require("mongoose");
 
@@ -69,7 +72,54 @@ router.post("/create/:userId", async (req, res) => {
       tracking: genrateRandomTracking(),
     });
     await newOrder.save();
+    
+    // Create transaction record for the payment
+    const paymentMethod = req.body.paymentMethod || "COD";
+    const transactionType = paymentMethod === "COD" ? "COD" : "Online";
+    const transactionStatus = paymentMethod === "COD" ? "Pending" : "Completed";
+    
+    const transactionId = `TXN${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    let receiptNumber = null;
+    if (transactionStatus === "Completed") {
+      receiptNumber = `RCP${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    }
+    
+    const transaction = new Transaction({
+      userId: userid,
+      orderId: newOrder._id,
+      transactionId,
+      type: transactionType,
+      amount: total,
+      status: transactionStatus,
+      paymentMethod: paymentMethod,
+      description: `Payment for Order #${newOrder._id}`,
+      receiptNumber,
+    });
+    
+    await transaction.save();
     await Bag.deleteMany({ userId: userid });
+    
+    // Send order confirmation notification
+    try {
+      const deviceTokens = await DeviceToken.find({
+        userId: userid,
+        isActive: true,
+        "preferences.orderUpdates": true,
+      });
+      
+      if (deviceTokens.length > 0) {
+        const tokens = deviceTokens.map((dt) => dt.token);
+        await notificationService.sendOrderUpdateNotification(
+          tokens,
+          newOrder._id.toString(),
+          "Processing"
+        );
+      }
+    } catch (error) {
+      console.error("Error sending order notification:", error);
+      // Don't fail the order creation if notification fails
+    }
+    
     res.status(200).json({ message: "Order placed successfully" });
   } catch (error) {
     console.log(error);

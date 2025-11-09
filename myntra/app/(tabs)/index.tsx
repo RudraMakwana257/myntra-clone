@@ -6,82 +6,24 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Search, ChevronRight } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import { Search } from "lucide-react-native";
+import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
 import { getRecentlyViewed, RecentlyViewedItem } from "@/utils/storage";
 import { useFocusEffect } from "@react-navigation/native";
+import { useTheme } from "@/context/ThemeContext";
+import { Colors } from "@/constants/theme";
+import Container from "@/components/Container";
+import { useResponsive } from "@/hooks/use-responsive";
+import { Product, Category, Deal } from "@/types";
+import { ProductCard, CategoryCard, SectionHeader } from "@/components";
+import { API_BASE_URL, LAYOUT } from "@/constants/layout";
 
-// const categories = [
-//   {
-//     id: 1,
-//     name: "Men",
-//     image:
-//       "https://images.unsplash.com/photo-1617137968427-85924c800a22?w=500&auto=format&fit=crop",
-//   },
-//   {
-//     id: 2,
-//     name: "Women",
-//     image:
-//       "https://images.unsplash.com/photo-1618244972963-dbad0c4abf18?w=500&auto=format&fit=crop",
-//   },
-//   {
-//     id: 3,
-//     name: "Kids",
-//     image:
-//       "https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?w=500&auto=format&fit=crop",
-//   },
-//   {
-//     id: 4,
-//     name: "Beauty",
-//     image:
-//       "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=500&auto=format&fit=crop",
-//   },
-// ];
-
-// const products = [
-//   {
-//     id: 1,
-//     name: "Casual White T-Shirt",
-//     brand: "Roadster",
-//     price: "₹499",
-//     discount: "60% OFF",
-//     image:
-//       "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&auto=format&fit=crop",
-//   },
-//   {
-//     id: 2,
-//     name: "Denim Jacket",
-//     brand: "Levis",
-//     price: "₹2499",
-//     discount: "40% OFF",
-//     image:
-//       "https://images.unsplash.com/photo-1523205771623-e0faa4d2813d?w=500&auto=format&fit=crop",
-//   },
-//   {
-//     id: 3,
-//     name: "Summer Dress",
-//     brand: "ONLY",
-//     price: "₹1299",
-//     discount: "50% OFF",
-//     image:
-//       "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=500&auto=format&fit=crop",
-//   },
-//   {
-//     id: 4,
-//     name: "Classic Sneakers",
-//     brand: "Nike",
-//     price: "₹3499",
-//     discount: "30% OFF",
-//     image:
-//       "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop",
-//   },
-// ];
-
-const deals = [
+const deals: Deal[] = [
   {
     id: 1,
     title: "Under ₹599",
@@ -99,45 +41,63 @@ const deals = [
 export default function Home() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [product, setproduct] = useState<any>(null);
-  const [categories, setcategories] = useState<any>(null);
-  const [recentlyViewed, setRecentlyViewed] = useState<RecentlyViewedItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<RecentlyViewedItem[]>(
+    []
+  );
   const { user } = useAuth();
-  const handleProductPress = (productId: string) => {
-    if (!user) {
-      router.push("/login");
-    } else {
-      router.push(`/product/${productId}`);
-    }
-  };
-  useEffect(() => {
-    const fetchproduct = async () => {
-      try {
-        setIsLoading(true);
-        const cat = await axios.get("https://myntra-clone-fdcv.onrender.com/category");
-        const product = await axios.get("https://myntra-clone-fdcv.onrender.com/product");
-        setcategories(cat.data);
-        setproduct(product.data);
-      } catch (error) {
-        console.log(error);
-        setIsLoading(false);
-      } finally {
-        setIsLoading(false);
+  const { theme } = useTheme();
+  const { isDesktop, isTablet } = useResponsive();
+  const colors = Colors[theme];
+
+  const handleProductPress = useCallback(
+    (productId: string) => {
+      if (!user) {
+        router.push("/login");
+      } else {
+        router.push(`/product/${productId}`);
       }
-    };
-    fetchproduct();
+    },
+    [user, router]
+  );
+
+  const handleCategoryPress = useCallback(
+    (categoryId: string) => {
+      router.push(`/categories?category=${categoryId}`);
+    },
+    [router]
+  );
+
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [categoriesResponse, productsResponse] = await Promise.all([
+        axios.get(`${API_BASE_URL}/category`),
+        axios.get(`${API_BASE_URL}/product`),
+      ]);
+      setCategories(categoriesResponse.data || []);
+      setProducts(productsResponse.data || []);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  // Load recently viewed whenever Home gains focus
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       let isActive = true;
       (async () => {
         try {
           const list = await getRecentlyViewed();
           if (isActive) setRecentlyViewed(list);
         } catch (e) {
-          // ignore
+          // Silently handle error
         }
       })();
       return () => {
@@ -145,156 +105,227 @@ export default function Home() {
       };
     }, [])
   );
+
+  const getProductCardWidth = () => {
+    if (Platform.OS !== "web") return "48%";
+    return isDesktop ? "23%" : isTablet ? "31%" : "48%";
+  };
+
+  const getCategoryCardWidth = () => {
+    if (isDesktop) return LAYOUT.categoryCard.desktop;
+    if (isTablet) return LAYOUT.categoryCard.tablet;
+    return LAYOUT.categoryCard.mobile;
+  };
+
+  const getBannerHeight = () => {
+    if (Platform.OS !== "web") return LAYOUT.bannerHeight.mobile;
+    return isDesktop
+      ? LAYOUT.bannerHeight.desktop
+      : isTablet
+      ? LAYOUT.bannerHeight.tablet
+      : LAYOUT.bannerHeight.mobile;
+  };
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.logo}>MYNTRA</Text>
-        <TouchableOpacity style={styles.searchButton}>
-          <Search size={24} color="#3e3e3e" />
-        </TouchableOpacity>
-      </View>
-
-      <Image
-        source={{
-          uri: "https://images.unsplash.com/photo-1445205170230-053b83016050?w=800&auto=format&fit=crop",
-        }}
-        style={styles.banner}
-      />
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>SHOP BY CATEGORY</Text>
-          <TouchableOpacity style={styles.viewAll}>
-            <Text style={styles.viewAllText}>View All</Text>
-            <ChevronRight size={20} color="#ff3f6c" />
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Header */}
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.background,
+            borderBottomColor: colors.border,
+          },
+        ]}
+      >
+        <Container style={styles.headerInner}>
+          <Text style={[styles.logo, { color: colors.text }]}>MYNTRA</Text>
+          <TouchableOpacity
+            style={styles.searchButton}
+            onPress={() => router.push("/categories")}
+            activeOpacity={0.7}
+          >
+            <Search size={24} color={colors.icon} />
           </TouchableOpacity>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.categoriesScroll}
-        >
-          {isLoading ? (
-            <ActivityIndicator
-              size="large"
-              color="#ff3f6c"
-              style={styles.loader}
-            />
-          ) : !categories || categories.length === 0 ? (
-            <Text style={styles.emptyText}>No categories available</Text>
-          ) : (
-            categories.map((category: any) => (
-              <TouchableOpacity key={category._id} style={styles.categoryCard}>
-                <Image
-                  source={{ uri: category.image }}
-                  style={styles.categoryImage}
-                />
-                <Text style={styles.categoryName}>{category.name}</Text>
-              </TouchableOpacity>
-            ))
-          )}
-        </ScrollView>
+        </Container>
       </View>
 
-      {recentlyViewed.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>RECENTLY VIEWED</Text>
-          </View>
+      {/* Banner */}
+      <Container>
+        <Image
+          source={{
+            uri: "https://images.unsplash.com/photo-1445205170230-053b83016050?w=800&auto=format&fit=crop",
+          }}
+          style={[styles.banner, { height: getBannerHeight() }]}
+          resizeMode="cover"
+        />
+      </Container>
+
+      {/* Categories Section */}
+      <View style={styles.section}>
+        <Container>
+          <SectionHeader
+            title="SHOP BY CATEGORY"
+            onViewAllPress={() => router.push("/categories")}
+          />
+        </Container>
+        <Container>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={styles.recentScroll}
+            style={styles.horizontalScroll}
+            contentContainerStyle={styles.horizontalScrollContent}
           >
-            {recentlyViewed.map((item) => (
+            {isLoading ? (
+              <View style={styles.loaderContainer}>
+                <ActivityIndicator size="large" color={colors.buttonPrimary} />
+              </View>
+            ) : categories.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={[styles.emptyText, { color: colors.text }]}>
+                  No categories available
+                </Text>
+              </View>
+            ) : (
+              categories.map((category) => (
+                <CategoryCard
+                  key={category._id}
+                  category={category}
+                  onPress={handleCategoryPress}
+                  width={getCategoryCardWidth()}
+                />
+              ))
+            )}
+          </ScrollView>
+        </Container>
+      </View>
+
+      {/* Recently Viewed Section */}
+      {recentlyViewed.length > 0 && (
+        <View style={styles.section}>
+          <Container>
+            <SectionHeader
+              title="RECENTLY VIEWED"
+              actionText="Clear"
+              showChevron={false}
+              onViewAllPress={() => setRecentlyViewed([])}
+            />
+          </Container>
+          <Container>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.horizontalScroll}
+              contentContainerStyle={styles.horizontalScrollContent}
+            >
+              {recentlyViewed.map((item) => (
+                <ProductCard
+                  key={item.id}
+                  product={{
+                    _id: item.id,
+                    name: item.name,
+                    brand: item.brand || "",
+                    price: item.price || 0,
+                    discount: item.discount,
+                    image: item.image,
+                  }}
+                  onPress={handleProductPress}
+                  width={Platform.OS === "web" ? 200 : 160}
+                />
+              ))}
+            </ScrollView>
+          </Container>
+        </View>
+      )}
+
+      {/* Deals Section */}
+      <View style={styles.section}>
+        <Container>
+          <SectionHeader title="DEALS OF THE DAY" />
+        </Container>
+        <Container>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.horizontalScroll}
+            contentContainerStyle={styles.dealsContent}
+          >
+            {deals.map((deal) => (
               <TouchableOpacity
-                key={item.id}
-                style={styles.recentCard}
-                onPress={() => handleProductPress(item.id)}
+                key={deal.id}
+                style={[
+                  styles.dealCard,
+                  {
+                    backgroundColor: colors.cardBackground,
+                    borderColor: colors.cardBorder,
+                    width:
+                      Platform.OS === "web"
+                        ? LAYOUT.dealCard.width.web
+                        : LAYOUT.dealCard.width.mobile,
+                    height:
+                      Platform.OS === "web"
+                        ? LAYOUT.dealCard.height.web
+                        : LAYOUT.dealCard.height.mobile,
+                  },
+                ]}
+                activeOpacity={0.85}
               >
-                {item.image ? (
-                  <Image source={{ uri: item.image }} style={styles.recentImage} />
-                ) : (
-                  <View style={[styles.recentImage, { backgroundColor: "#f0f0f0" }]} />
-                )}
-                <View style={styles.recentInfo}>
-                  <Text style={styles.brandName} numberOfLines={1}>{item.brand}</Text>
-                  <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
-                  <View style={styles.priceRow}>
-                    {typeof item.price === "number" ? (
-                      <Text style={styles.productPrice}>₹{item.price}</Text>
-                    ) : null}
-                    {item.discount ? (
-                      <Text style={styles.discount}>{item.discount}</Text>
-                    ) : null}
-                  </View>
+                <Image
+                  source={{ uri: deal.image }}
+                  style={styles.dealImage}
+                  resizeMode="cover"
+                />
+                <View style={styles.dealOverlay}>
+                  <Text style={styles.dealTitle}>{deal.title}</Text>
                 </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </View>
-      )}
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>DEALS OF THE DAY</Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.dealsScroll}
-        >
-          {deals.map((deal) => (
-            <TouchableOpacity key={deal.id} style={styles.dealCard}>
-              <Image source={{ uri: deal.image }} style={styles.dealImage} />
-              <View style={styles.dealOverlay}>
-                <Text style={styles.dealTitle}>{deal.title}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        </Container>
       </View>
 
+      {/* Products Section */}
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>TRENDING NOW</Text>
-        </View>
-        <View style={styles.productsGrid}>
-          {isLoading ? (
-            <ActivityIndicator
-              size="large"
-              color="#ff3f6c"
-              style={styles.loader}
-            />
-          ) : !product || product.length === 0 ? (
-            <Text style={styles.emptyText}>No Product available</Text>
-          ) : ( 
-            <View style={styles.productsGrid}>
-              {product.map((product: any) => (
-                <TouchableOpacity
+        <Container>
+          <SectionHeader title="TRENDING PRODUCTS" />
+        </Container>
+        <Container>
+          <View
+            style={[
+              styles.productsGrid,
+              {
+                justifyContent:
+                  Platform.OS === "web" && isDesktop
+                    ? "flex-start"
+                    : "space-between",
+              },
+            ]}
+          >
+            {isLoading ? (
+              <View style={styles.loaderContainer}>
+                <ActivityIndicator size="large" color={colors.buttonPrimary} />
+              </View>
+            ) : products.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={[styles.emptyText, { color: colors.text }]}>
+                  No products available
+                </Text>
+              </View>
+            ) : (
+              products.map((product) => (
+                <ProductCard
                   key={product._id}
-                  style={styles.productCard}
-                  onPress={() => handleProductPress(product._id)}
-                >
-                  <Image
-                    source={{ uri: product.images[0
-                      
-                    ] }}
-                    style={styles.productImage}
-                  />
-                  <View style={styles.productInfo}>
-                    <Text style={styles.brandName}>{product.brand}</Text>
-                    <Text style={styles.productName}>{product.name}</Text>
-                    <View style={styles.priceRow}>
-                      <Text style={styles.productPrice}>{product.price}</Text>
-                      <Text style={styles.discount}>{product.discount}</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+                  product={product}
+                  onPress={handleProductPress}
+                  width={getProductCardWidth()}
+                />
+              ))
+            )}
+          </View>
+        </Container>
       </View>
     </ScrollView>
   );
@@ -303,28 +334,21 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
   },
   header: {
+    paddingVertical: 15,
+    paddingTop: Platform.OS === "web" ? 15 : 50,
+    borderBottomWidth: 1,
+  },
+  headerInner: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 15,
-    paddingTop: 50,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  emptyText: {
-    textAlign: "center",
-    marginTop: 20,
-    fontSize: 16,
-    color: "#666",
   },
   logo: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#3e3e3e",
+    letterSpacing: 1,
   },
   searchButton: {
     padding: 8,
@@ -332,57 +356,26 @@ const styles = StyleSheet.create({
   banner: {
     width: "100%",
     height: 200,
-    resizeMode: "cover",
   },
   section: {
-    padding: 15,
+    paddingVertical: 20,
   },
-  sectionHeader: {
+  horizontalScroll: {
+    marginHorizontal: -16,
+  },
+  horizontalScrollContent: {
+    paddingHorizontal: 16,
+  },
+  dealsContent: {
+    paddingHorizontal: 16,
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#3e3e3e",
-  },
-  viewAll: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  viewAllText: {
-    color: "#ff3f6c",
-    marginRight: 5,
-  },
-  categoriesScroll: {
-    marginHorizontal: -15,
-  },
-  categoryCard: {
-    width: 100,
-    marginHorizontal: 8,
-  },
-  categoryImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  categoryName: {
-    textAlign: "center",
-    marginTop: 8,
-    fontSize: 14,
-    color: "#3e3e3e",
-  },
-  dealsScroll: {
-    marginHorizontal: -15,
   },
   dealCard: {
-    width: 280,
-    height: 150,
-    marginHorizontal: 8,
+    marginRight: 15,
     borderRadius: 10,
     overflow: "hidden",
+    borderWidth: 1,
+    position: "relative",
   },
   dealImage: {
     width: "100%",
@@ -393,7 +386,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: "rgba(0,0,0,0.6)",
     padding: 15,
   },
   dealTitle: {
@@ -404,80 +397,21 @@ const styles = StyleSheet.create({
   productsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginHorizontal: -8,
+    marginHorizontal: -4,
   },
-  productCard: {
-    width: "48%",
-    marginHorizontal: "1%",
-    marginBottom: 15,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  productImage: {
+  loaderContainer: {
     width: "100%",
-    height: 200,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+    paddingVertical: 50,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  productInfo: {
-    padding: 10,
-  },
-  brandName: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 2,
-  },
-  productName: {
-    fontSize: 16,
-    marginBottom: 5,
-  },
-  priceRow: {
-    flexDirection: "row",
+  emptyContainer: {
+    width: "100%",
+    paddingVertical: 40,
     alignItems: "center",
   },
-  productPrice: {
+  emptyText: {
+    textAlign: "center",
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#3e3e3e",
-    marginRight: 8,
-  },
-  discount: {
-    fontSize: 14,
-    color: "#ff3f6c",
-    fontWeight: "500",
-  },
-  loader: {
-    marginTop: 50,
-  },
-  // Recently viewed styles
-  recentScroll: {
-    marginHorizontal: -15,
-  },
-  recentCard: {
-    width: 140,
-    marginHorizontal: 8,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 3,
-  },
-  recentImage: {
-    width: "100%",
-    height: 160,
-  },
-  recentInfo: {
-    padding: 8,
   },
 });

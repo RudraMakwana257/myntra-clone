@@ -15,6 +15,12 @@ import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
 import { addRecentlyViewed } from "@/utils/storage";
+import { useTheme } from "@/context/ThemeContext";
+import { Colors } from "@/constants/theme";
+import Container from "@/components/Container";
+import { useResponsive } from "@/hooks/use-responsive";
+import { Platform } from "react-native";
+import ProductRecommendationCarousel from "@/components/ProductRecommendationCarousel";
 
 // Mock product data - in a real app, this would come from an API
 // const products = {
@@ -91,29 +97,67 @@ export default function ProductDetails() {
   const scrollViewRef = useRef<ScrollView>(null);
   const autoScrollTimer = useRef<number | null>(null);
   const { user } = useAuth();
-  const [product, setproduct] = useState<any>(null);
-  const [iswishlist, setiswishlist] = useState(false);
-  useEffect(() => {
-    // Simulate loading time
+  const [product, setProduct] = useState<any>(null);
+  const [isWishlist, setIsWishlist] = useState(false);
+  const [wishlistItemId, setWishlistItemId] = useState<string | null>(null);
+  const { theme } = useTheme();
+  const colors = Colors[theme];
+  const { isDesktop, isTablet } = useResponsive();
 
-    const fetchproduct = async () => {
+  // Fetch product details when component mounts or id changes
+  useEffect(() => {
+    const fetchProduct = async () => {
+      if (!id) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
         setIsLoading(true);
-        const product = await axios.get(
+        const response = await axios.get(
           `https://myntra-clone-fdcv.onrender.com/product/${id}`
         );
-        setproduct(product.data);
+        setProduct(response.data);
       } catch (error) {
-        console.log(error);
+        console.error('Error fetching product:', error);
         setIsLoading(false);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchproduct();
-  }, []);
 
-  // Record recently viewed when product loads
+    fetchProduct();
+  }, [id]);
+
+  // Check if product is in wishlist only once when component mounts
+  // Don't auto-update - only update when user clicks the icon
+  useEffect(() => {
+    const checkWishlistStatus = async () => {
+      if (!user || !id) {
+        setIsWishlist(false);
+        setWishlistItemId(null);
+        return;
+      }
+
+      try {
+        const response = await axios.get(
+          `https://myntra-clone-fdcv.onrender.com/wishlist/check/${user._id}/${id}`
+        );
+        setIsWishlist(response.data.isInWishlist);
+        setWishlistItemId(response.data.wishlistItemId);
+      } catch (error) {
+        console.error('Error checking wishlist status:', error);
+        setIsWishlist(false);
+        setWishlistItemId(null);
+      }
+    };
+
+    // Only check once when component mounts or when id changes
+    // Don't check on every product/user change to avoid auto-updates
+    checkWishlistStatus();
+  }, [id]); // Only depend on id, not user or product
+
+  // Record recently viewed when product loads (client-side storage)
   useEffect(() => {
     if (product && id) {
       addRecentlyViewed({
@@ -126,6 +170,28 @@ export default function ProductDetails() {
       }).catch(() => {});
     }
   }, [product, id]);
+
+  // Track product view in server-side browsing history for recommendations
+  useEffect(() => {
+    const trackProductView = async () => {
+      if (product && id && user) {
+        try {
+          // Track the view asynchronously (don't wait for it)
+          axios.post('https://myntra-clone-fdcv.onrender.com/recommendation/track-view', {
+            userId: user._id,
+            productId: id,
+            viewDuration: 0, // Could be enhanced to track actual view duration
+          }).catch(() => {
+            // Silently fail - recommendations still work without tracking
+          });
+        } catch (error) {
+          // Silently fail - don't interrupt user experience
+        }
+      }
+    };
+
+    trackProductView();
+  }, [product, id, user]);
 
   useEffect(() => {
     // Start auto-scroll
@@ -153,28 +219,65 @@ export default function ProductDetails() {
 
   if (!product) {
     return (
-      <View style={styles.container}>
-        <Text>Product not found</Text>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Container>
+          <Text style={{ color: colors.text }}>Product not found</Text>
+        </Container>
       </View>
     );
   }
-  const handleAddwishlist = async () => {
+  // Toggle product in wishlist (add/remove) - only when user clicks
+  const handleToggleWishlist = async () => {
     if (!user) {
       router.push("/login");
       return;
     }
 
+    // Optimistic UI update - immediately update the icon for instant feedback
+    const previousState = isWishlist;
+    const previousItemId = wishlistItemId;
+    const newState = !isWishlist;
+    setIsWishlist(newState);
+    setWishlistItemId(newState ? 'temp' : null);
+
     try {
-      await axios.post(`https://myntra-clone-fdcv.onrender.com/wishlist`, {
+      // Call API to toggle wishlist
+      const response = await axios.post(`https://myntra-clone-fdcv.onrender.com/wishlist`, {
         userId: user._id,
         productId: id,
       });
-      setiswishlist(true);
-      router.push("/wishlist");
-    } catch (error) {
-      console.log(error);
+      
+      // Update wishlist status based on actual API response
+      if (response.data && typeof response.data.isInWishlist === 'boolean') {
+        setIsWishlist(response.data.isInWishlist);
+        setWishlistItemId(response.data.wishlistItemId || null);
+      } else {
+        // Fallback: verify state by checking wishlist
+        try {
+          const verifyResponse = await axios.get(
+            `https://myntra-clone-fdcv.onrender.com/wishlist/check/${user._id}/${id}`
+          );
+          setIsWishlist(verifyResponse.data.isInWishlist);
+          setWishlistItemId(verifyResponse.data.wishlistItemId || null);
+        } catch (verifyError) {
+          // If verification fails, revert to previous state
+          console.error('Failed to verify wishlist status:', verifyError);
+          setIsWishlist(previousState);
+          setWishlistItemId(previousItemId);
+        }
+      }
+    } catch (error: any) {
+      // Revert optimistic update on error
+      console.error('Error toggling wishlist:', error);
+      setIsWishlist(previousState);
+      setWishlistItemId(previousItemId);
+      
+      // Show user-friendly error message
+      const errorMessage = error.response?.data?.message || "Failed to update wishlist. Please try again.";
+      alert(errorMessage);
     }
   };
+  // Add product to shopping bag
   const handleAddToBag = async () => {
     if (!user) {
       router.push("/login");
@@ -182,25 +285,28 @@ export default function ProductDetails() {
     }
 
     if (!selectedSize) {
-      // In a real app, show a proper error message
       alert("Please select a size");
       return;
     }
+
     try {
       setLoading(true);
-      await axios.post(`https://myntra-clone-fdcv.onrender.com/bag`, {
+      const response = await axios.post(`https://myntra-clone-fdcv.onrender.com/bag`, {
         userId: user._id,
         productId: id,
         size: selectedSize,
         quantity: 1,
       });
-      router.push("/bag");
+      
+      // Show success feedback (optional - you can add a toast notification here)
+      // Optionally navigate to bag, or show a success message
+      // router.push("/bag");
     } catch (error) {
-      console.log(error);
+      console.error('Error adding to bag:', error);
+      alert("Failed to add item to bag. Please try again.");
     } finally {
       setLoading(false);
     }
-    // In a real app, this would add the item to the cart in your state management solution
   };
 
   const handleScroll = (event: any) => {
@@ -217,113 +323,151 @@ export default function ProductDetails() {
 
   if (isLoading) {
     return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#ff3f6c" />
+      <View style={[styles.loaderContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.buttonPrimary} />
       </View>
     );
   }
 
+  const imageWidth = isDesktop ? 600 : width;
+  const productLayout = isDesktop ? styles.productLayoutDesktop : styles.productLayoutMobile;
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView>
-        <View style={styles.carouselContainer}>
-          <ScrollView
-            ref={scrollViewRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-          >
-            {product.images.map((image: any, index: any) => (
-              <Image
-                key={index}
-                source={{ uri: image }}
-                style={[styles.productImage, { width }]}
-                resizeMode="cover"
-              />
-            ))}
-          </ScrollView>
-          <View style={styles.pagination}>
-            {product.images.map((_: any, index: any) => (
-              <View
-                key={index}
-                style={[
-                  styles.paginationDot,
-                  currentImageIndex === index && styles.paginationDotActive,
-                ]}
-              />
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.brand}>{product.brand}</Text>
-              <Text style={styles.name}>{product.name}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.wishlistButton}
-              onPress={handleAddwishlist}
-            >
-              <Heart
-                size={24}
-                color={iswishlist ? "#ff3f6c" : "#ccc"}
-                fill={iswishlist ? "#ff3f6c" : "none"}
-              />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.priceContainer}>
-            <Text style={styles.price}>₹{product.price}</Text>
-            <Text style={styles.discount}>{product.discount}</Text>
-          </View>
-
-          <Text style={styles.description}>{product.description}</Text>
-
-          <View style={styles.sizeSection}>
-            <Text style={styles.sizeTitle}>Select Size</Text>
-            <View style={styles.sizeGrid}>
-              {product.sizes.map((size: any) => (
-                <TouchableOpacity
-                  key={size}
-                  style={[
-                    styles.sizeButton,
-                    selectedSize === size && styles.selectedSize,
-                  ]}
-                  onPress={() => setSelectedSize(size)}
+        <Container>
+          <View style={productLayout}>
+            {/* Image Gallery */}
+            <View style={[styles.imageSection, { flex: isDesktop ? 1 : undefined }]}>
+              <View style={styles.carouselContainer}>
+                <ScrollView
+                  ref={scrollViewRef}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  onScroll={handleScroll}
+                  scrollEventThrottle={16}
                 >
-                  <Text
-                    style={[
-                      styles.sizeText,
-                      selectedSize === size && styles.selectedSizeText,
-                    ]}
-                  >
-                    {size}
-                  </Text>
+                  {product.images.map((image: any, index: any) => (
+                    <Image
+                      key={index}
+                      source={{ uri: image }}
+                      style={[styles.productImage, { width: imageWidth, height: isDesktop ? 600 : 400 }]}
+                      resizeMode="cover"
+                    />
+                  ))}
+                </ScrollView>
+                <View style={styles.pagination}>
+                  {product.images.map((_: any, index: any) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.paginationDot,
+                        { backgroundColor: currentImageIndex === index ? colors.buttonPrimary : 'rgba(255, 255, 255, 0.5)' },
+                        currentImageIndex === index && styles.paginationDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            {/* Product Info */}
+            <View style={[styles.content, { flex: isDesktop ? 1 : undefined }]}>
+              <View style={styles.header}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.brand, { color: colors.textSecondary }]}>{product.brand}</Text>
+                  <Text style={[styles.name, { color: colors.text }]}>{product.name}</Text>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.wishlistButton, 
+                    { 
+                      backgroundColor: colors.backgroundSecondary,
+                    }
+                  ]}
+                  onPress={handleToggleWishlist}
+                  activeOpacity={0.7}
+                >
+                  <Heart
+                    size={24}
+                    color={isWishlist ? colors.buttonPrimary : colors.icon}
+                    fill={isWishlist ? colors.buttonPrimary : "none"}
+                  />
                 </TouchableOpacity>
-              ))}
+              </View>
+
+              <View style={styles.priceContainer}>
+                <Text style={[styles.price, { color: colors.text }]}>₹{product.price}</Text>
+                {product.discount && (
+                  <View style={[styles.discountBadge, { backgroundColor: colors.buttonPrimary }]}>
+                    <Text style={styles.discountBadgeText}>{product.discount}</Text>
+                  </View>
+                )}
+              </View>
+
+              <Text style={[styles.description, { color: colors.textSecondary }]}>{product.description}</Text>
+
+              <View style={styles.sizeSection}>
+                <Text style={[styles.sizeTitle, { color: colors.text }]}>Select Size</Text>
+                <View style={styles.sizeGrid}>
+                  {product.sizes.map((size: any) => (
+                    <TouchableOpacity
+                      key={size}
+                      style={[
+                        styles.sizeButton,
+                        { 
+                          borderColor: selectedSize === size ? colors.buttonPrimary : colors.border,
+                          backgroundColor: selectedSize === size ? colors.backgroundSecondary : colors.background,
+                        },
+                        selectedSize === size && styles.selectedSize,
+                      ]}
+                      onPress={() => setSelectedSize(size)}
+                    >
+                      <Text
+                        style={[
+                          styles.sizeText,
+                          { color: selectedSize === size ? colors.buttonPrimary : colors.text },
+                          selectedSize === size && styles.selectedSizeText,
+                        ]}
+                      >
+                        {size}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
             </View>
           </View>
-        </View>
+        </Container>
+
+        {/* Product Recommendations Carousel */}
+        {product && (
+          <ProductRecommendationCarousel
+            productId={String(id)}
+            userId={user?._id}
+            title="You May Also Like"
+          />
+        )}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.addToBagButton}
-          onPress={handleAddToBag}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color="#ff3f6c" />
-          ) : (
-            <>
-              <ShoppingBag size={20} color="#fff" />
-              <Text style={styles.addToBagText}>ADD TO BAG</Text>
-            </>
-          )}
-        </TouchableOpacity>
+      <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+        <Container>
+          <TouchableOpacity
+            style={[styles.addToBagButton, { backgroundColor: colors.buttonPrimary }]}
+            onPress={handleAddToBag}
+            disabled={loading || !selectedSize}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <ShoppingBag size={20} color="#fff" />
+                <Text style={styles.addToBagText}>ADD TO BAG</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </Container>
       </View>
     </View>
   );
@@ -332,19 +476,31 @@ export default function ProductDetails() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
   },
   loaderContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+  },
+  productLayoutMobile: {
+    flexDirection: "column",
+  },
+  productLayoutDesktop: {
+    flexDirection: "row",
+    gap: 40,
+    alignItems: "flex-start",
+    paddingVertical: 20,
+  },
+  imageSection: {
+    marginBottom: 20,
   },
   carouselContainer: {
     position: "relative",
+    borderRadius: 12,
+    overflow: "hidden",
   },
   productImage: {
-    height: 400,
+    resizeMode: "cover",
   },
   pagination: {
     position: "absolute",
@@ -358,55 +514,59 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.5)",
     marginHorizontal: 4,
   },
   paginationDotActive: {
-    backgroundColor: "#fff",
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 24,
+    height: 8,
+    borderRadius: 4,
   },
   content: {
-    padding: 20,
+    padding: Platform.OS === 'web' ? 0 : 20,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
+    marginBottom: 15,
   },
   brand: {
     fontSize: 16,
-    color: "#666",
     marginBottom: 5,
+    fontWeight: "500",
   },
   name: {
-    fontSize: 20,
+    fontSize: Platform.OS === 'web' ? 28 : 20,
     fontWeight: "bold",
-    color: "#3e3e3e",
     marginBottom: 10,
+    lineHeight: Platform.OS === 'web' ? 36 : 28,
   },
   wishlistButton: {
-    padding: 10,
+    padding: 12,
+    borderRadius: 8,
   },
   priceContainer: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 15,
+    gap: 12,
   },
   price: {
-    fontSize: 20,
+    fontSize: Platform.OS === 'web' ? 28 : 20,
     fontWeight: "bold",
-    color: "#3e3e3e",
-    marginRight: 10,
   },
-  discount: {
-    fontSize: 16,
-    color: "#ff3f6c",
+  discountBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  discountBadgeText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
   },
   description: {
     fontSize: 16,
-    color: "#666",
     lineHeight: 24,
     marginBottom: 20,
   },
@@ -416,48 +576,50 @@ const styles = StyleSheet.create({
   sizeTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#3e3e3e",
-    marginBottom: 10,
+    marginBottom: 15,
   },
   sizeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
+    gap: 12,
   },
   sizeButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 1,
-    borderColor: "#ddd",
+    width: Platform.OS === 'web' ? 70 : 60,
+    height: Platform.OS === 'web' ? 70 : 60,
+    borderRadius: Platform.OS === 'web' ? 35 : 30,
+    borderWidth: 1.5,
     justifyContent: "center",
     alignItems: "center",
   },
   selectedSize: {
-    borderColor: "#ff3f6c",
-    backgroundColor: "#fff4f4",
+    borderWidth: 2,
   },
   sizeText: {
     fontSize: 16,
-    color: "#3e3e3e",
+    fontWeight: "600",
   },
   selectedSizeText: {
-    color: "#ff3f6c",
+    fontWeight: "700",
   },
   footer: {
-    padding: 15,
-    backgroundColor: "#fff",
+    paddingVertical: 15,
     borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
+    ...Platform.select({
+      web: {
+        position: 'sticky',
+        bottom: 0,
+        zIndex: 10,
+      },
+    }),
   },
   addToBagButton: {
-    backgroundColor: "#ff3f6c",
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     padding: 15,
     borderRadius: 10,
     gap: 10,
+    opacity: 1,
   },
   addToBagText: {
     color: "#fff",

@@ -36,8 +36,23 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/myntra.jpg",
+          "color": "#ff3f6c",
+          "sounds": []
+        }
       ]
     ],
+    "notification": {
+      "icon": "./assets/images/myntra.jpg",
+      "color": "#ff3f6c",
+      "iosDisplayInForeground": true,
+      "androidMode": "default",
+      "androidCollapsedTitle": "#{unread_notifications} new notifications"
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true

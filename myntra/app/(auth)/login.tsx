@@ -7,11 +7,17 @@ import {
   StyleSheet,
   Image,
   ActivityIndicator,
+  Platform,
+  Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import React from "react";
 import { Eye, EyeOff } from "lucide-react-native";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
+import { Colors } from "@/constants/theme";
+import { useResponsive } from "@/hooks/use-responsive";
+import Container from "@/components/Container";
 
 export default function Login() {
   const { login } = useAuth();
@@ -20,6 +26,10 @@ export default function Login() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [isloading, setisloading] = useState(false);
+  const { theme } = useTheme();
+  const { isDesktop, isTablet } = useResponsive();
+  const colors = Colors[theme];
+
   const handleLogin = async () => {
     try {
       setisloading(true);
@@ -32,29 +42,100 @@ export default function Login() {
     }
   };
 
+  if (Platform.OS === "web") {
+    return (
+      <View style={[styles.webContainer, { backgroundColor: colors.background }]}>
+        <Container>
+          <View style={[
+            styles.webFormContainer,
+            {
+              backgroundColor: colors.cardBackground,
+              borderColor: colors.cardBorder,
+              shadowColor: colors.shadow,
+              width: isDesktop ? 450 : isTablet ? '70%' : '90%',
+              maxWidth: 500,
+            }
+          ]}>
+          <Text style={[styles.title, { color: Colors[theme].text }]}>Welcome to Myntra</Text>
+          <Text style={[styles.subtitle, { color: Colors[theme].icon }]}>Login to continue shopping</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: Colors[theme].background, color: Colors[theme].text }]}
+            placeholder="Email"
+            placeholderTextColor={Colors[theme].icon}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+          <View style={[styles.passwordContainer, { backgroundColor: Colors[theme].background }]}>
+            <TextInput
+              style={[styles.passwordInput, { color: Colors[theme].text }]}
+              placeholder="Password"
+              placeholderTextColor={Colors[theme].icon}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? (
+                <EyeOff size={20} color={Colors[theme].icon} />
+              ) : (
+                <Eye size={20} color={Colors[theme].icon} />
+              )}
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleLogin}
+            disabled={isloading}
+          >
+            {isloading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>LOGIN</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.signupLink}
+            onPress={() => router.push("/signup")}
+          >
+            <Text style={[styles.signupText, { color: colors.buttonPrimary }]}>Don't have an account? Sign Up</Text>
+          </TouchableOpacity>
+          </View>
+        </Container>
+      </View>
+    )
+  }
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: Colors[theme].background }]}>
       <Image
         source={{
           uri: "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=2070&auto=format&fit=crop",
         }}
         style={styles.backgroundImage}
       />
-      <View style={styles.formContainer}>
-        <Text style={styles.title}>Welcome to Myntra</Text>
-        <Text style={styles.subtitle}>Login to continue shopping</Text>
+      <View style={[styles.formContainer, { backgroundColor: `rgba(${theme === 'light' ? '255, 255, 255' : '0, 0, 0'}, 0.9)` }]}>
+        <Text style={[styles.title, { color: Colors[theme].text }]}>Welcome to Myntra</Text>
+        <Text style={[styles.subtitle, { color: Colors[theme].icon }]}>Login to continue shopping</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: Colors[theme].background, color: Colors[theme].text }]}
           placeholder="Email"
+          placeholderTextColor={Colors[theme].icon}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
         />
-        <View style={styles.passwordContainer}>
+        <View style={[styles.passwordContainer, { backgroundColor: Colors[theme].background }]}>
           <TextInput
-            style={styles.passwordInput}
+            style={[styles.passwordInput, { color: Colors[theme].text }]}
             placeholder="Password"
+            placeholderTextColor={Colors[theme].icon}
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
@@ -64,9 +145,9 @@ export default function Login() {
             onPress={() => setShowPassword(!showPassword)}
           >
             {showPassword ? (
-              <EyeOff size={20} color="#666" />
+              <EyeOff size={20} color={Colors[theme].icon} />
             ) : (
-              <Eye size={20} color="#666" />
+              <Eye size={20} color={Colors[theme].icon} />
             )}
           </TouchableOpacity>
         </View>
@@ -165,5 +246,24 @@ const styles = StyleSheet.create({
   signupText: {
     color: "#ff3f6c",
     fontSize: 16,
+  },
+  webContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  webFormContainer: {
+    padding: 40,
+    borderRadius: 10,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+    borderWidth: 1,
+    alignSelf: 'center',
+    marginVertical: 40,
   },
 });

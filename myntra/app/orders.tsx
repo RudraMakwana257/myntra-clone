@@ -7,20 +7,20 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Platform,
 } from "react-native";
-import { useRouter } from "expo-router";
 import {
   Package,
   ChevronRight,
   MapPin,
   Truck,
-  Clock,
-  Calendar,
   CreditCard,
 } from "lucide-react-native";
-import React from "react";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
+import { Colors } from "@/constants/theme";
+import Container from "@/components/Container";
 
 // const orders = [
 //   {
@@ -131,68 +131,91 @@ import { useAuth } from "@/context/AuthContext";
 // ];
 
 export default function Orders() {
-  const router = useRouter();
+  const { user } = useAuth();
+  const { theme } = useTheme();
+  const colors = Colors[theme];
+
+  // Track which order's details are currently expanded
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
-  const [orders, setorder] = useState<any>(null);
+  const [orders, setOrders] = useState<any[] | null>(null);
+
+  // Fetch user's orders when component mounts or user changes
   useEffect(() => {
-    // Simulate loading time
-    const fetchorder = async () => {
-      if (user) {
-        try {
-          setIsLoading(true);
-          const product = await axios.get(
-            `https://myntra-clone-fdcv.onrender.com/order/user/${user._id}`
-          );
-          setorder(product.data);
-        } catch (error) {
-          console.log(error);
-          setIsLoading(false);
-        } finally {
-          setIsLoading(false);
-        }
+    const fetchOrders = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const response = await axios.get(
+          `https://myntra-clone-fdcv.onrender.com/order/user/${user._id}`
+        );
+        setOrders(response.data);
+      } catch (error) {
+        console.error('Failed to fetch orders:', error);
+        setOrders([]); // Set empty array instead of null for better UX
+      } finally {
+        setIsLoading(false);
       }
     };
-    fetchorder();
-  }, []);
-   if (isLoading) {
-      return (
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#ff3f6c" />
-        </View>
-      );
-    }
+
+    fetchOrders();
+  }, [user]);
+
+  // Toggle order details visibility
   const toggleOrderDetails = (orderId: string) => {
-    setExpandedOrder(expandedOrder === orderId ? null : orderId);
+    if (expandedOrder === orderId) {
+      setExpandedOrder(null);
+    } else {
+      setExpandedOrder(orderId);
+    }
   };
-  if (!orders) {
+
+  // Show loading spinner while fetching orders
+  if (isLoading) {
     return (
-      <View style={styles.container}>
-        <Text>Order not found</Text>
+      <View style={[styles.loaderContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.buttonPrimary} />
+      </View>
+    );
+  }
+
+  // Show message if no orders found
+  if (!orders || orders.length === 0) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Container>
+          <Text style={{ color: colors.text }}>No orders found</Text>
+        </Container>
       </View>
     );
   }
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Orders</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <Container>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>My Orders</Text>
+        </Container>
       </View>
 
       <ScrollView style={styles.content}>
-        {orders.map((order:any) => (
-          <View key={order._id} style={styles.orderCard}>
+        <Container>
+          {orders.map((order: any) => (
+          <View key={order._id} style={[styles.orderCard, { backgroundColor: colors.cardBackground, shadowColor: colors.shadow, borderColor: colors.cardBorder }]}>
             <TouchableOpacity
-              style={styles.orderHeader}
+              style={[styles.orderHeader, { borderBottomColor: colors.border }]}
               onPress={() => toggleOrderDetails(order._id)}
             >
               <View>
-                <Text style={styles.orderId}>Order #{order._id}</Text>
-                <Text style={styles.orderDate}>{order.date}</Text>
+                <Text style={[styles.orderId, { color: colors.text }]}>Order #{order._id}</Text>
+                <Text style={[styles.orderDate, { color: colors.textSecondary }]}>{order.date}</Text>
               </View>
               <View style={styles.statusContainer}>
                 <Package size={16} color="#00b852" />
-                <Text style={styles.orderStatus}>{order.status}</Text>
+                <Text style={[styles.orderStatus, { color: '#00b852' }]}>{order.status}</Text>
               </View>
             </TouchableOpacity>
 
@@ -204,42 +227,44 @@ export default function Orders() {
                     style={styles.itemImage}
                   />
                   <View style={styles.itemInfo}>
-                    <Text style={styles.brandName}>{item.productId.brand}</Text>
-                    <Text style={styles.itemName}>{item.productId.name}</Text>
-                    <Text style={styles.itemPrice}>₹{item.productId.price}</Text>
+                    <Text style={[styles.brandName, { color: colors.textSecondary }]}>{item.productId.brand}</Text>
+                    <Text style={[styles.itemName, { color: colors.text }]}>{item.productId.name}</Text>
+                    <Text style={[styles.itemPrice, { color: colors.text }]}>
+                      ₹{item.productId.price}
+                    </Text>
                   </View>
                 </View>
               ))}
             </View>
 
             {expandedOrder === order._id && (
-              <View style={styles.orderDetails}>
+              <View style={[styles.orderDetails, { borderTopColor: colors.border }]}>
                 <View style={styles.detailSection}>
                   <View style={styles.detailHeader}>
-                    <MapPin size={20} color="#3e3e3e" />
-                    <Text style={styles.detailTitle}>Shipping Address</Text>
+                    <MapPin size={20} color={colors.text} />
+                    <Text style={[styles.detailTitle, { color: colors.text }]}>Shipping Address</Text>
                   </View>
-                  <Text style={styles.detailText}>{order.shippingAddress}</Text>
+                  <Text style={[styles.detailText, { color: colors.textSecondary }]}>{order.shippingAddress}</Text>
                 </View>
 
                 <View style={styles.detailSection}>
                   <View style={styles.detailHeader}>
-                    <CreditCard size={20} color="#3e3e3e" />
-                    <Text style={styles.detailTitle}>Payment Method</Text>
+                    <CreditCard size={20} color={colors.text} />
+                    <Text style={[styles.detailTitle, { color: colors.text }]}>Payment Method</Text>
                   </View>
-                  <Text style={styles.detailText}>{order.paymentMethod}</Text>
+                  <Text style={[styles.detailText, { color: colors.textSecondary }]}>{order.paymentMethod}</Text>
                 </View>
 
                 <View style={styles.detailSection}>
                   <View style={styles.detailHeader}>
-                    <Truck size={20} color="#3e3e3e" />
-                    <Text style={styles.detailTitle}>Tracking Information</Text>
+                    <Truck size={20} color={colors.text} />
+                    <Text style={[styles.detailTitle, { color: colors.text }]}>Tracking Information</Text>
                   </View>
                   <View style={styles.trackingInfo}>
-                    <Text style={styles.trackingNumber}>
+                    <Text style={[styles.trackingNumber, { color: colors.textSecondary }] }>
                       Tracking Number: {order.tracking.number}
                     </Text>
-                    <Text style={styles.trackingCarrier}>
+                    <Text style={[styles.trackingCarrier, { color: colors.textSecondary }]}>
                       Carrier: {order.tracking.carrier}
                     </Text>
                   </View>
@@ -247,20 +272,20 @@ export default function Orders() {
                   <View style={styles.timeline}>
                     {order.tracking.timeline.map((event:any, index:any) => (
                       <View key={index} style={styles.timelineEvent}>
-                        <View style={styles.timelinePoint} />
+                        <View style={[styles.timelinePoint, { backgroundColor: colors.buttonPrimary }]} />
                         <View style={styles.timelineContent}>
-                          <Text style={styles.timelineStatus}>
+                          <Text style={[styles.timelineStatus, { color: colors.text }]}>
                             {event.status}
                           </Text>
-                          <Text style={styles.timelineLocation}>
+                          <Text style={[styles.timelineLocation, { color: colors.textSecondary }]}>
                             {event.location}
                           </Text>
-                          <Text style={styles.timelineTimestamp}>
+                          <Text style={[styles.timelineTimestamp, { color: colors.textTertiary }]}>
                             {event.timestamp}
                           </Text>
                         </View>
                         {index !== order.tracking.timeline.length - 1 && (
-                          <View style={styles.timelineLine} />
+                          <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />
                         )}
                       </View>
                     ))}
@@ -269,23 +294,24 @@ export default function Orders() {
               </View>
             )}
 
-            <View style={styles.orderFooter}>
+            <View style={[styles.orderFooter, { borderTopColor: colors.border }]}>
               <View style={styles.totalContainer}>
-                <Text style={styles.totalLabel}>Order Total</Text>
-                <Text style={styles.totalAmount}>₹{order.total}</Text>
+                <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Order Total</Text>
+                <Text style={[styles.totalAmount, { color: colors.text }]}>₹{order.total}</Text>
               </View>
               <TouchableOpacity
                 style={styles.detailsButton}
                 onPress={() => toggleOrderDetails(order._id)}
               >
-                <Text style={styles.detailsButtonText}>
+                <Text style={[styles.detailsButtonText, { color: colors.buttonPrimary }] }>
                   {expandedOrder === order._id ? "Hide Details" : "View Details"}
                 </Text>
-                <ChevronRight size={20} color="#ff3f6c" />
+                <ChevronRight size={20} color={colors.buttonPrimary} />
               </TouchableOpacity>
             </View>
           </View>
-        ))}
+          ))}
+        </Container>
       </ScrollView>
     </View>
   );
@@ -304,10 +330,8 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 15,
-    paddingTop: 50,
-    backgroundColor: "#fff",
+    paddingTop: Platform.OS === 'web' ? 15 : 50,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
   },
   headerTitle: {
     fontSize: 24,

@@ -4,11 +4,63 @@ const router = express.Router();
 
 router.post("/", async (req, res) => {
   try {
-    const Bags = new Bag(req.body);
-    const saveitem = await Bags.save();
-    res.status(200).json(saveitem);
+    const { userId, productId, size, quantity = 1 } = req.body;
+
+    if (!userId || !productId || !size) {
+      return res.status(400).json({ message: "userId, productId, and size are required" });
+    }
+
+    // Check if the same product with same size already exists in bag
+    const existingItem = await Bag.findOne({ 
+      userId, 
+      productId, 
+      size 
+    });
+
+    if (existingItem) {
+      // Update quantity if item already exists
+      const newQuantity = (existingItem.quantity || 1) + (quantity || 1);
+      const updated = await Bag.findByIdAndUpdate(
+        existingItem._id,
+        { $set: { quantity: newQuantity } },
+        { new: true }
+      ).populate("productId");
+      
+      return res.status(200).json({
+        ...updated.toObject(),
+        updated: true
+      });
+    }
+
+    // Create new bag item if it doesn't exist
+    const bagItem = new Bag({ userId, productId, size, quantity });
+    const savedItem = await bagItem.save();
+    const populatedItem = await Bag.findById(savedItem._id).populate("productId");
+    
+    res.status(200).json({
+      ...populatedItem.toObject(),
+      added: true
+    });
   } catch (error) {
-    console.log(error);
+    // Handle duplicate key error (unique index violation)
+    if (error.code === 11000 || error.name === 'MongoServerError') {
+      // If duplicate, update quantity instead
+      const existingItem = await Bag.findOne({ userId, productId, size });
+      if (existingItem) {
+        const newQuantity = (existingItem.quantity || 1) + (quantity || 1);
+        const updated = await Bag.findByIdAndUpdate(
+          existingItem._id,
+          { $set: { quantity: newQuantity } },
+          { new: true }
+        ).populate("productId");
+        
+        return res.status(200).json({
+          ...updated.toObject(),
+          updated: true
+        });
+      }
+    }
+    console.error("Error managing bag:", error);
     return res.status(500).json({ message: "Something went wrong" });
   }
 });

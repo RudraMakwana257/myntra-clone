@@ -23,7 +23,7 @@
       "dest": "/product/$1"
     },
     {
-      "src": "^/(auth|tabs)/(.*)",
+      "src": "^\\(auth|tabs\\)/(.*)",
       "dest": "/$1/$2"
     },
     {

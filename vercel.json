@@ -6,6 +6,33 @@
   "buildCommand": "cd myntra && npm ci && npx expo export --platform web",
   "outputDirectory": "myntra/dist",
   "routes": [
-    { "src": "/(.*)", "dest": "/index.html" }
+    {
+      "src": "^/_expo/.*",
+      "dest": "/_expo/$1"
+    },
+    {
+      "src": "^/assets/.*",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "^/api/.*",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "^/product/(.*)",
+      "dest": "/product/$1"
+    },
+    {
+      "src": "^/(auth|tabs)/(.*)",
+      "dest": "/$1/$2"
+    },
+    {
+      "src": "^/(.*)\\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$",
+      "dest": "/$1.$2"
+    },
+    {
+      "src": "^/(.*)",
+      "dest": "/index.html"
+    }
   ]
 }

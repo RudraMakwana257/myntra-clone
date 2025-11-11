@@ -21,6 +21,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Colors } from "@/constants/theme";
 import Container from "@/components/Container";
+import { API_BASE_URL } from "@/constants/env";
 
 // const orders = [
 //   {
@@ -151,7 +152,7 @@ export default function Orders() {
       try {
         setIsLoading(true);
         const response = await axios.get(
-          `https://myntra-clone-fdcv.onrender.com/order/user/${user._id}`
+          `${API_BASE_URL}/order/user/${user._id}`
         );
         setOrders(response.data);
       } catch (error) {

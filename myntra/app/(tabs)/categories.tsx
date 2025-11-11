@@ -18,6 +18,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { Colors } from "@/constants/theme";
 import Container from "@/components/Container";
 import { useResponsive } from "@/hooks/use-responsive";
+import { API_BASE_URL } from "@/constants/env";
 
 // const categories = [
 //   {
@@ -132,7 +133,7 @@ export default function TabTwoScreen() {
     const fetchproduct = async () => {
       try {
         setIsLoading(true);
-        const cat = await axios.get("https://myntra-clone-fdcv.onrender.com/category");
+        const cat = await axios.get(`${API_BASE_URL}/category`);
         setcategories(cat.data);
       } catch (error) {
         console.log(error);

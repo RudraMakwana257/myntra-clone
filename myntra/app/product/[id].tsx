@@ -115,7 +115,7 @@ export default function ProductDetails() {
       try {
         setIsLoading(true);
         const response = await axios.get(
-          `https://myntra-clone-fdcv.onrender.com/product/${id}`
+          `${API_BASE_URL}/product/${id}`
         );
         setProduct(response.data);
       } catch (error) {
@@ -141,7 +141,7 @@ export default function ProductDetails() {
 
       try {
         const response = await axios.get(
-          `https://myntra-clone-fdcv.onrender.com/wishlist/check/${user._id}/${id}`
+          `${API_BASE_URL}/wishlist/check/${user._id}/${id}`
         );
         setIsWishlist(response.data.isInWishlist);
         setWishlistItemId(response.data.wishlistItemId);
@@ -177,7 +177,7 @@ export default function ProductDetails() {
       if (product && id && user) {
         try {
           // Track the view asynchronously (don't wait for it)
-          axios.post('https://myntra-clone-fdcv.onrender.com/recommendation/track-view', {
+          axios.post(`${API_BASE_URL}/recommendation/track-view`, {
             userId: user._id,
             productId: id,
             viewDuration: 0, // Could be enhanced to track actual view duration
@@ -242,7 +242,7 @@ export default function ProductDetails() {
 
     try {
       // Call API to toggle wishlist
-      const response = await axios.post(`https://myntra-clone-fdcv.onrender.com/wishlist`, {
+      const response = await axios.post(`${API_BASE_URL}/wishlist`, {
         userId: user._id,
         productId: id,
       });
@@ -255,7 +255,7 @@ export default function ProductDetails() {
         // Fallback: verify state by checking wishlist
         try {
           const verifyResponse = await axios.get(
-            `https://myntra-clone-fdcv.onrender.com/wishlist/check/${user._id}/${id}`
+            `${API_BASE_URL}/wishlist/check/${user._id}/${id}`
           );
           setIsWishlist(verifyResponse.data.isInWishlist);
           setWishlistItemId(verifyResponse.data.wishlistItemId || null);
@@ -291,7 +291,7 @@ export default function ProductDetails() {
 
     try {
       setLoading(true);
-      const response = await axios.post(`https://myntra-clone-fdcv.onrender.com/bag`, {
+      const response = await axios.post(`${API_BASE_URL}/bag`, {
         userId: user._id,
         productId: id,
         size: selectedSize,

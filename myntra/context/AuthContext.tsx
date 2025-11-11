@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { getUserData, saveUserData, clearUserData } from "@/utils/storage";
 import React from "react";
 import axios from "axios";
+import { API_BASE_URL } from "@/constants/env";
 type AuthContextType = {
   isAuthenticated: boolean;
   user: { _id: string; name: string; email: string } | null;
@@ -31,8 +32,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const login = async (email: string, password: string) => {
-    // 👉 Replace with your real API URL
-    const res = await axios.post("https://myntra-clone-fdcv.onrender.com/user/login", {
+    const res = await axios.post(`${API_BASE_URL}/user/login`, {
       email,
       password,
     });
@@ -47,8 +47,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
   const Signup = async (fullName: string, email: string, password: string) => {
-    // 👉 Replace with your real API URL
-    const res = await axios.post("https://myntra-clone-fdcv.onrender.com/user/signup", {
+    const res = await axios.post(`${API_BASE_URL}/user/signup`, {
       fullName,
       email,
       password,

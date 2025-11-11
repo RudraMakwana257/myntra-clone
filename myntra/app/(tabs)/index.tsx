@@ -21,7 +21,8 @@ import Container from "@/components/Container";
 import { useResponsive } from "@/hooks/use-responsive";
 import { Product, Category, Deal } from "@/types";
 import { ProductCard, CategoryCard, SectionHeader } from "@/components";
-import { API_BASE_URL, LAYOUT } from "@/constants/layout";
+import { LAYOUT } from "@/constants/layout";
+import { API_BASE_URL } from "@/constants/env";
 
 const deals: Deal[] = [
   {

@@ -50,7 +50,5 @@ export const LAYOUT = {
   },
 } as const;
 
-export const API_BASE_URL = 'https://myntra-clone-fdcv.onrender.com';
-
 export const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/300';
 

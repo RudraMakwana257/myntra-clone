@@ -29,6 +29,7 @@ import Container from "@/components/Container";
 import { useResponsive } from "@/hooks/use-responsive";
 import axios from "axios";
 import { ThemedButton } from "@/components";
+import { API_BASE_URL } from "@/constants/env";
 
 interface PaymentMethod {
   _id: string;
@@ -111,7 +112,7 @@ export default function PaymentMethods() {
     try {
       setLoading(true);
       const response = await axios.get(
-        '${API_BASE_URL}/payment-methods/user/${user?._id}?activeOnly=true'
+        `${API_BASE_URL}/payment-methods/user/${user?._id}?activeOnly=true`
       );
       setPaymentMethods(response.data.data);
     } catch (error) {
@@ -149,7 +150,7 @@ export default function PaymentMethods() {
           break;
       }
 
-      const response = await axios.post('${API_BASE_URL}/payment-methods', paymentData);
+      const response = await axios.post(`${API_BASE_URL}/payment-methods`, paymentData);
       
       if (response.data.success) {
         setShowAddForm(false);
@@ -174,7 +175,7 @@ export default function PaymentMethods() {
           style: "destructive",
           onPress: async () => {
             try {
-              const response = await axios.delete('${API_BASE_URL}/payment-methods/${id}');
+              const response = await axios.delete(`${API_BASE_URL}/payment-methods/${id}`);
               if (response.data.success) {
                 fetchPaymentMethods();
                 Alert.alert("Success", "Payment method deleted successfully");
@@ -191,7 +192,7 @@ export default function PaymentMethods() {
 
   const setAsDefault = async (id: string) => {
     try {
-      const response = await axios.put('${API_BASE_URL}/payment-methods/${id}/set-default');
+      const response = await axios.put(`${API_BASE_URL}/payment-methods/${id}/set-default`);
       if (response.data.success) {
         fetchPaymentMethods();
         Alert.alert("Success", "Payment method set as default");

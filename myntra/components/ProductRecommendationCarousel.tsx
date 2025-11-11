@@ -15,6 +15,7 @@ import ProductCard from './ProductCard';
 import Container from './Container';
 import { Product } from '@/types';
 import axios from 'axios';
+import { API_BASE_URL } from '@/constants/env';
 
 interface ProductRecommendationCarouselProps {
   productId: string;
@@ -59,7 +60,7 @@ export default function ProductRecommendationCarousel({
         queryParams.append('limit', '10');
 
         const response = await axios.get(
-          `https://myntra-clone-fdcv.onrender.com/recommendation/${productId}?${queryParams.toString()}`
+          `${API_BASE_URL}/recommendation/${productId}?${queryParams.toString()}`
         );
 
         setRecommendations(response.data || []);

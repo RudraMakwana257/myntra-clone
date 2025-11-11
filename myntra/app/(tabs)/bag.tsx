@@ -17,6 +17,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { Colors } from "@/constants/theme";
 import Container from "@/components/Container";
 import { useResponsive } from "@/hooks/use-responsive";
+import { API_BASE_URL } from "@/constants/env";
 
 const bagItems = [
   {
@@ -66,7 +67,7 @@ export default function Bag() {
     try {
       setIsLoading(true);
       const response = await axios.get(
-        `https://myntra-clone-fdcv.onrender.com/bag/${user._id}`
+        `${API_BASE_URL}/bag/${user._id}`
       );
       setbag(response.data || []);
     } catch (error) {
@@ -142,7 +143,7 @@ export default function Bag() {
         return;
       }
       await axios.delete(
-        `https://myntra-clone-fdcv.onrender.com/bag/${itemid}`
+        `${API_BASE_URL}/bag/${itemid}`
       );
       // Refresh bag items after deletion
       await fetchproduct();
@@ -162,7 +163,7 @@ export default function Bag() {
       
       // Update quantity
       await axios.patch(
-        `https://myntra-clone-fdcv.onrender.com/bag/${itemid}`,
+        `${API_BASE_URL}/bag/${itemid}`,
         { quantity: newQty }
       );
       
@@ -181,12 +182,12 @@ export default function Bag() {
         return;
       }
       // Add to wishlist as Save for Later
-      await axios.post(`https://myntra-clone-fdcv.onrender.com/wishlist/`, {
+      await axios.post(`${API_BASE_URL}/wishlist/`, {
         userId: user._id,
         productId: item.productId._id,
       });
       // Remove from bag
-      await axios.delete(`https://myntra-clone-fdcv.onrender.com/bag/${item._id}`);
+      await axios.delete(`${API_BASE_URL}/bag/${item._id}`);
       fetchproduct();
     } catch (error) {
       console.error('Error saving item for later:', error);

@@ -28,6 +28,7 @@ import { Colors } from "@/constants/theme";
 import Container from "@/components/Container";
 import { useResponsive } from "@/hooks/use-responsive";
 import axios from "axios";
+import { API_BASE_URL } from "@/constants/env";
 
 interface Transaction {
   _id: string;
@@ -76,7 +77,7 @@ export default function Transactions() {
       params.append("sortOrder", sortOrder);
 
       const response = await axios.get(
-        `https://myntra-clone-fdcv.onrender.com/transaction/user/${user._id}?${params.toString()}`
+        `${API_BASE_URL}/transaction/user/${user._id}?${params.toString()}`
       );
       setTransactions(response.data.transactions || []);
     } catch (error) {
@@ -95,7 +96,7 @@ export default function Transactions() {
   const handleDownloadReceipt = async (transactionId: string) => {
     try {
       const response = await axios.get(
-        `https://myntra-clone-fdcv.onrender.com/transaction/${transactionId}/receipt`,
+        `${API_BASE_URL}/transaction/${transactionId}/receipt`,
         {
           responseType: "blob",
         }
@@ -131,7 +132,7 @@ export default function Transactions() {
       if (filterStatus !== "All") params.append("status", filterStatus);
 
       const response = await axios.get(
-        `https://myntra-clone-fdcv.onrender.com/transaction/user/${user._id}/export/csv?${params.toString()}`,
+        `${API_BASE_URL}/transaction/user/${user._id}/export/csv?${params.toString()}`,
         {
           responseType: "blob",
         }
@@ -166,7 +167,7 @@ export default function Transactions() {
       if (filterStatus !== "All") params.append("status", filterStatus);
 
       const response = await axios.get(
-        `https://myntra-clone-fdcv.onrender.com/transaction/user/${user._id}/export/pdf?${params.toString()}`,
+        `${API_BASE_URL}/transaction/user/${user._id}/export/pdf?${params.toString()}`,
         {
           responseType: "blob",
         }

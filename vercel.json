@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "myntra/package.json", "use": "@vercel/static-build" }
+  ],
+  "buildCommand": "cd myntra && npm ci && npx expo export --platform web",
+  "outputDirectory": "myntra/dist",
+  "routes": [
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}

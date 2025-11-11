@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { Platform, AppState } from 'react-native';
 import { useAuth } from './AuthContext';
 import axios from 'axios';
+import { API_BASE_URL } from '@/constants/env';
 
 // Only import and configure notifications on native platforms or when window is available (client-side)
 let Notifications: typeof import('expo-notifications') | null = null;
@@ -82,7 +83,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         try {
           const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
           
-          await axios.post('https://myntra-clone-fdcv.onrender.com/notification/register', {
+          await axios.post(`${API_BASE_URL}/notification/register`, {
             userId: user._id,
             token,
             platform,
@@ -152,7 +153,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const unregisterForPushNotifications = async (): Promise<void> => {
     try {
       if (expoPushToken) {
-        await axios.post('https://myntra-clone-fdcv.onrender.com/notification/unregister', {
+        await axios.post(`${API_BASE_URL}/notification/unregister`, {
           token: expoPushToken,
         });
         setExpoPushToken(null);
@@ -167,7 +168,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     try {
       if (user) {
         await axios.patch(
-          `https://myntra-clone-fdcv.onrender.com/notification/preferences/${user._id}`,
+          `${API_BASE_URL}/notification/preferences/${user._id}`,
           { preferences }
         );
       }

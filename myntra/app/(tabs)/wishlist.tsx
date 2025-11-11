@@ -8,6 +8,7 @@ import { Colors } from "@/constants/theme";
 import Container from "@/components/Container";
 import { useResponsive } from "@/hooks/use-responsive";
 import { Platform } from "react-native";
+import { API_BASE_URL } from "@/constants/env";
 import {
   View,
   Text,
@@ -56,7 +57,7 @@ export default function Wishlist() {
       try {
         setIsLoading(true);
         const bag = await axios.get(
-          `https://myntra-clone-fdcv.onrender.com/wishlist/${user._id}`
+          `${API_BASE_URL}/wishlist/${user._id}`
         );
         setwishlist(bag.data);
       } catch (error) {
@@ -75,7 +76,7 @@ export default function Wishlist() {
         return;
       }
       await axios.delete(
-        `https://myntra-clone-fdcv.onrender.com/wishlist/${itemid}`
+        `${API_BASE_URL}/wishlist/${itemid}`
       );
       fetchproduct();
     } catch (error) {
@@ -89,13 +90,13 @@ export default function Wishlist() {
         return;
       }
       const firstSize = item?.productId?.sizes?.[0] || 'M';
-      await axios.post(`https://myntra-clone-fdcv.onrender.com/bag/`, {
+      await axios.post(`${API_BASE_URL}/bag/`, {
         userId: user?._id,
         productId: item.productId._id,
         size: firstSize,
         quantity: 1,
       });
-      await axios.delete(`https://myntra-clone-fdcv.onrender.com/wishlist/${item._id}`);
+      await axios.delete(`${API_BASE_URL}/wishlist/${item._id}`);
       fetchproduct();
     } catch (error) {
       console.error('Error moving item to bag:', error);

@@ -21,6 +21,7 @@ import Container from "@/components/Container";
 import { useResponsive } from "@/hooks/use-responsive";
 import { Platform } from "react-native";
 import ProductRecommendationCarousel from "@/components/ProductRecommendationCarousel";
+import { API_BASE_URL } from "@/constants/env";
 
 // Mock product data - in a real app, this would come from an API
 // const products = {
@@ -98,6 +99,7 @@ export default function ProductDetails() {
   const autoScrollTimer = useRef<number | null>(null);
   const { user } = useAuth();
   const [product, setProduct] = useState<any>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [isWishlist, setIsWishlist] = useState(false);
   const [wishlistItemId, setWishlistItemId] = useState<string | null>(null);
   const { theme } = useTheme();
@@ -115,12 +117,20 @@ export default function ProductDetails() {
       try {
         setIsLoading(true);
         const response = await axios.get(
-          `${API_BASE_URL}/product/${id}`
+          `${API_BASE_URL}/product/${encodeURIComponent(String(id))}`
         );
         setProduct(response.data);
+        setFetchError(null);
       } catch (error) {
+        // Distinguish 404 from other errors
+        const status = (error as any)?.response?.status;
+        if (status === 404) {
+          setProduct(null);
+          setFetchError('not_found');
+        } else {
+          setFetchError('error');
+        }
         console.error('Error fetching product:', error);
-        setIsLoading(false);
       } finally {
         setIsLoading(false);
       }
@@ -217,11 +227,21 @@ export default function ProductDetails() {
     }, 3000);
   };
 
-  if (!product) {
+  if (!isLoading && fetchError === 'not_found') {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Container>
           <Text style={{ color: colors.text }}>Product not found</Text>
+        </Container>
+      </View>
+    );
+  }
+
+  if (!isLoading && fetchError === 'error') {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Container>
+          <Text style={{ color: colors.text }}>Failed to load product. Please try again.</Text>
         </Container>
       </View>
     );

@@ -7,7 +7,7 @@ import { API_BASE_URL } from '@/constants/env';
 // Only import and configure notifications on native platforms or when window is available (client-side)
 let Notifications: typeof import('expo-notifications') | null = null;
 
-if (Platform.OS !== 'web' || (typeof window !== 'undefined' && window.localStorage)) {
+if (Platform.OS !== 'web') {
   try {
     Notifications = require('expo-notifications');
     // Configure notification behavior
@@ -50,6 +50,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   // Register for push notifications
   const registerForPushNotifications = async (): Promise<string | null> => {
+    if (Platform.OS === 'web') {
+      return null;
+    }
     if (!Notifications) {
       console.warn('Notifications not available on this platform');
       return null;

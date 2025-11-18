@@ -125,8 +125,21 @@ export default function ProductDetails() {
         // Distinguish 404 from other errors
         const status = (error as any)?.response?.status;
         if (status === 404) {
-          setProduct(null);
-          setFetchError('not_found');
+          try {
+            const listResponse = await axios.get(`${API_BASE_URL}/product`);
+            const items = Array.isArray(listResponse.data) ? listResponse.data : [];
+            const found = items.find((p: any) => String(p._id) === String(id));
+            if (found) {
+              setProduct(found);
+              setFetchError(null);
+            } else {
+              setProduct(null);
+              setFetchError('not_found');
+            }
+          } catch (listError) {
+            setProduct(null);
+            setFetchError('not_found');
+          }
         } else {
           setFetchError('error');
         }

@@ -89,6 +89,7 @@ import { API_BASE_URL } from "@/constants/env";
 
 export default function ProductDetails() {
   const { id } = useLocalSearchParams();
+  const productId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
   const { width } = useWindowDimensions();
   const [selectedSize, setSelectedSize] = useState("");
@@ -109,7 +110,7 @@ export default function ProductDetails() {
   // Fetch product details when component mounts or id changes
   useEffect(() => {
     const fetchProduct = async () => {
-      if (!id) {
+      if (!productId) {
         setIsLoading(false);
         return;
       }
@@ -117,7 +118,7 @@ export default function ProductDetails() {
       try {
         setIsLoading(true);
         const response = await axios.get(
-          `${API_BASE_URL}/product/${encodeURIComponent(String(id))}`
+          `${API_BASE_URL}/product/${encodeURIComponent(String(productId))}`
         );
         setProduct(response.data);
         setFetchError(null);
@@ -128,13 +129,34 @@ export default function ProductDetails() {
           try {
             const listResponse = await axios.get(`${API_BASE_URL}/product`);
             const items = Array.isArray(listResponse.data) ? listResponse.data : [];
-            const found = items.find((p: any) => String(p._id) === String(id));
+            const found = items.find((p: any) => String(p._id) === String(productId));
             if (found) {
               setProduct(found);
               setFetchError(null);
             } else {
-              setProduct(null);
-              setFetchError('not_found');
+              try {
+                const catResponse = await axios.get(`${API_BASE_URL}/category`);
+                const cats = Array.isArray(catResponse.data) ? catResponse.data : [];
+                let foundInCategories: any = null;
+                for (const cat of cats) {
+                  const products = Array.isArray(cat.productId) ? cat.productId : [];
+                  const match = products.find((p: any) => String(p._id) === String(productId));
+                  if (match) {
+                    foundInCategories = match;
+                    break;
+                  }
+                }
+                if (foundInCategories) {
+                  setProduct(foundInCategories);
+                  setFetchError(null);
+                } else {
+                  setProduct(null);
+                  setFetchError('not_found');
+                }
+              } catch (catError) {
+                setProduct(null);
+                setFetchError('not_found');
+              }
             }
           } catch (listError) {
             setProduct(null);
@@ -156,7 +178,7 @@ export default function ProductDetails() {
   // Don't auto-update - only update when user clicks the icon
   useEffect(() => {
     const checkWishlistStatus = async () => {
-      if (!user || !id) {
+      if (!user || !productId) {
         setIsWishlist(false);
         setWishlistItemId(null);
         return;
@@ -164,7 +186,7 @@ export default function ProductDetails() {
 
       try {
         const response = await axios.get(
-          `${API_BASE_URL}/wishlist/check/${user._id}/${id}`
+          `${API_BASE_URL}/wishlist/check/${user._id}/${productId}`
         );
         setIsWishlist(response.data.isInWishlist);
         setWishlistItemId(response.data.wishlistItemId);
@@ -178,13 +200,13 @@ export default function ProductDetails() {
     // Only check once when component mounts or when id changes
     // Don't check on every product/user change to avoid auto-updates
     checkWishlistStatus();
-  }, [id]); // Only depend on id, not user or product
+  }, [productId]);
 
   // Record recently viewed when product loads (client-side storage)
   useEffect(() => {
-    if (product && id) {
+    if (product && productId) {
       addRecentlyViewed({
-        id: String(id),
+        id: String(productId),
         name: product.name,
         brand: product.brand,
         price: product.price,
@@ -192,17 +214,17 @@ export default function ProductDetails() {
         image: Array.isArray(product.images) ? product.images[0] : undefined,
       }).catch(() => {});
     }
-  }, [product, id]);
+  }, [product, productId]);
 
   // Track product view in server-side browsing history for recommendations
   useEffect(() => {
     const trackProductView = async () => {
-      if (product && id && user) {
+      if (product && productId && user) {
         try {
           // Track the view asynchronously (don't wait for it)
           axios.post(`${API_BASE_URL}/recommendation/track-view`, {
             userId: user._id,
-            productId: id,
+            productId: productId,
             viewDuration: 0, // Could be enhanced to track actual view duration
           }).catch(() => {
             // Silently fail - recommendations still work without tracking
@@ -214,7 +236,7 @@ export default function ProductDetails() {
     };
 
     trackProductView();
-  }, [product, id, user]);
+  }, [product, productId, user]);
 
   useEffect(() => {
     // Start auto-scroll
@@ -277,7 +299,7 @@ export default function ProductDetails() {
       // Call API to toggle wishlist
       const response = await axios.post(`${API_BASE_URL}/wishlist`, {
         userId: user._id,
-        productId: id,
+        productId: productId,
       });
       
       // Update wishlist status based on actual API response
@@ -288,7 +310,7 @@ export default function ProductDetails() {
         // Fallback: verify state by checking wishlist
         try {
           const verifyResponse = await axios.get(
-            `${API_BASE_URL}/wishlist/check/${user._id}/${id}`
+            `${API_BASE_URL}/wishlist/check/${user._id}/${productId}`
           );
           setIsWishlist(verifyResponse.data.isInWishlist);
           setWishlistItemId(verifyResponse.data.wishlistItemId || null);
@@ -326,7 +348,7 @@ export default function ProductDetails() {
       setLoading(true);
       const response = await axios.post(`${API_BASE_URL}/bag`, {
         userId: user._id,
-        productId: id,
+        productId: productId,
         size: selectedSize,
         quantity: 1,
       });
@@ -477,7 +499,7 @@ export default function ProductDetails() {
         {/* Product Recommendations Carousel */}
         {product && (
           <ProductRecommendationCarousel
-            productId={String(id)}
+            productId={String(productId)}
             userId={user?._id}
             title="You May Also Like"
           />
